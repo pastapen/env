@@ -1,0 +1,9 @@
+/.fleet
+/.idea
+/.nova
+/.vscode
+/.zed
+
+/.env
+/auth.json
+/vendor/

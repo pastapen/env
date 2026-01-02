@@ -1,0 +1,21 @@
+{
+    "name": "pastapen/env",
+    "description": "Simple PHP Environment Manager",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Pastapen\\Env\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "denkadev",
+            "email": "denkadev@gmail.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {
+        "php": "^8.0"
+    }
+}
