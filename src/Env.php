@@ -25,7 +25,9 @@ class Env
     protected function getDefaultReaders(): array
     {
         return [
-            \Pastapen\Env\Stores\VariableStore::class
+            \Pastapen\Env\Stores\VariableStore::class,
+            \Pastapen\Env\Stores\SuperGlobalEnvStore::class,
+            \Pastapen\Env\Stores\ProcessEnvStore::class,
         ];
     }
 
