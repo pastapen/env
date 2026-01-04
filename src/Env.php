@@ -13,9 +13,19 @@ class Env
 
     protected bool $caseSensitive = false;
 
-    public function __construct(bool $caseSensitive = false)
+    protected bool $useGetEnv = true;
+
+    protected bool $useEnvVar = true;
+
+    public function __construct(
+        bool $caseSensitive = false,
+        bool $useGetEnv = true,
+        bool $useEnvVar = true,
+    )
     {
         $this->caseSensitive = $caseSensitive;
+        $this->useGetEnv = $useGetEnv;
+        $this->useEnvVar = $useEnvVar;
     }
 
     public function set(string $key, mixed $value): void
@@ -33,7 +43,16 @@ class Env
     {
         $key = $this->normalizeKey($key);
 
-        return $this->values[$key] ?? $default;
+        $values = $this->values[$key] ?? null;
+
+        if(!$values && $this->useEnvVar){
+            $values = $_ENV[$key] ?? null;
+        }
+        if(!$values && $this->useGetEnv){
+            $values = getenv($key, true);
+        }
+
+        return $values ?? $default;
     }
 
     protected function normalizeKey(string $key): string
@@ -55,7 +74,16 @@ class Env
     {
         $key = $this->normalizeKey($key);
 
-        return array_key_exists($key, $this->values);
+        $exists = array_key_exists($key, $this->values);
+        
+        if(!$exists && $this->useEnvVar){
+            $exists = array_key_exists($key, $_ENV);
+        }
+        if(!$exists && $this->useGetEnv){
+            $exists = getenv($key, true) !== false;
+        }
+
+        return $exists;
     }
 
     public function lock(): void
