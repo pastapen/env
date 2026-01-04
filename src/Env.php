@@ -33,49 +33,60 @@ class Env
     public function __construct(
         bool $caseSensitive = false,
         ?array $readers = null,
-        ?string $writer = null,
+        null|string|WriterInterface $writer = null,
     )
     {
         $this->caseSensitive = $caseSensitive;
         $this->buildWriter($writer ?? $this->getDefaultWriter());
-        $this->buildReaders($readers ?? $this->getDefaultReaders());
-    }
 
-    protected function buildWriter(string $writer): void
-    {
-        if(!class_exists($writer)){
-            throw new InvalidArgumentException("$writer class is not found !");
-        }
-        
-        $writerInstance = new $writer();
-        if(!$writerInstance instanceof WriterInterface){
-            throw new InvalidArgumentException("$writer is an invalid writer instance !");
-        }
-        $this->writer = $writerInstance;
-        $this->readers[$writer] = $writerInstance;
-    }
-
-    protected function buildReaders(array $readers): void
-    {
+        $readers = $readers ?? $this->getDefaultReaders();
         if(empty($readers)){
             throw new InvalidArgumentException("Reader can't be empty. Please provide atleast one reader instance");
         }
 
         foreach($readers as $reader){
-            if(array_key_exists($reader, $this->readers)){
-                continue;
-            }
+            $this->buildReader($reader);
+        }
 
+    }
+
+    protected function buildWriter(string|WriterInterface $writer): void
+    {
+        if(is_string($writer)){
+            if(!class_exists($writer)){
+                throw new InvalidArgumentException("$writer class is not found !");
+            }
+            
+            $writerInstance = new $writer();
+            if(!$writerInstance instanceof WriterInterface){
+                throw new InvalidArgumentException("$writer is an invalid writer instance !");
+            }
+        } else {
+            $writerInstance = $writer;
+        }
+
+        $this->writer = $writerInstance;
+        $writerClassName = get_class($writerInstance);
+        $this->readers[$writerClassName] = $writerInstance;
+    }
+
+    protected function buildReader(string|ReaderInterface $reader): void
+    {
+        if(is_object($reader)){
+            $readerInstance = $reader;
+            $reader = get_class($readerInstance);
+        } else {
             if(!class_exists($reader)){
                 throw new InvalidArgumentException("$reader class is not found !");
             }
 
             $readerInstance = new $reader();
-
             if(!$readerInstance instanceof ReaderInterface){
                 throw new InvalidArgumentException("$reader is an invalid reader instance !");
             }
+        }
 
+        if(!array_key_exists($reader, $this->readers)){
             $this->readers[$reader] = $readerInstance;
         }
     }
