@@ -5,6 +5,7 @@ namespace Pastapen\Env;
 use InvalidArgumentException;
 use Pastapen\Env\Contracts\ReaderInterface;
 use Pastapen\Env\Contracts\WriterInterface;
+use Pastapen\Env\Contracts\ParserInterface;
 use Pastapen\Env\Exceptions\ImmutableEnvironmentException;
 
 class Env
@@ -14,6 +15,8 @@ class Env
     protected bool $caseSensitive = false;
 
     protected array $readers = [];
+
+    protected ParserInterface $parser;
 
     protected WriterInterface $writer;
 
@@ -31,13 +34,27 @@ class Env
         ];
     }
 
+    protected function getDefaultParser(): ParserInterface
+    {
+        // Todo: add default parser
+    }
+
+    public function load(string $filename): void
+    {
+        foreach($this->parser->fromFile($filename)->parse() as $key => $value) {
+            $this->set($key, $value);
+        }
+    }
+
 
     public function __construct(
+        ?ParserInterface $parser = null,
         bool $caseSensitive = false,
         ?array $readers = null,
         null|string|WriterInterface $writer = null,
     )
     {
+        $this->parser = $parser ?: $this->getDefaultParser();
         $this->caseSensitive = $caseSensitive;
         $this->buildWriter($writer ?? $this->getDefaultWriter());
 
