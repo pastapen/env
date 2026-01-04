@@ -13,7 +13,7 @@ class Env
 
     protected bool $caseSensitive = false;
 
-    protected array $reader = [];
+    protected array $readers = [];
 
     protected WriterInterface $writer;
 
@@ -22,7 +22,7 @@ class Env
         return \Pastapen\Env\Stores\VariableStore::class;
     }
 
-    protected function getDefaultReader(): array
+    protected function getDefaultReaders(): array
     {
         return [
             \Pastapen\Env\Stores\VariableStore::class
@@ -32,38 +32,39 @@ class Env
 
     public function __construct(
         bool $caseSensitive = false,
-        ?array $reader = null,
+        ?array $readers = null,
         ?string $writer = null,
     )
     {
         $this->caseSensitive = $caseSensitive;
+        $this->buildWriter($writer ?? $this->getDefaultWriter());
+        $this->buildReaders($readers ?? $this->getDefaultReaders());
+    }
 
-        if(!$reader){
-            $reader = $this->getDefaultReader();
-        }
-
-        if(!$writer){
-            $writer = $this->getDefaultWriter();
-        }
+    protected function buildWriter(string $writer): void
+    {
         $writerInstance = new $writer();
         if(!$writerInstance instanceof WriterInterface){
             throw new InvalidArgumentException("$writer is an invalid writer instance !");
         }
         $this->writer = $writerInstance;
-        $this->reader[$writer] = $writerInstance;
-        
-        foreach($reader as $readerClassName){
-            if(array_key_exists($readerClassName, $this->reader)){
+        $this->readers[$writer] = $writerInstance;
+    }
+
+    protected function buildReaders(array $readers): void
+    {
+        foreach($readers as $reader){
+            if(array_key_exists($reader, $this->readers)){
                 continue;
             }
 
-            $readerInstance = new $readerClassName();
+            $readerInstance = new $reader();
 
             if(!$readerInstance instanceof ReaderInterface){
-                throw new InvalidArgumentException("$readerClassName is an invalid reader instance !");
+                throw new InvalidArgumentException("$reader is an invalid reader instance !");
             }
 
-            $this->reader[$readerClassName] = $readerInstance;
+            $this->readers[$reader] = $readerInstance;
         }
     }
 
@@ -81,7 +82,7 @@ class Env
     {
         $key = $this->normalizeKey($key);
 
-        foreach($this->reader as $reader){
+        foreach($this->readers as $reader){
             if($reader->has($key)){
                 return $reader->get($key, $default);
             }
@@ -109,7 +110,7 @@ class Env
     {
         $key = $this->normalizeKey($key);
 
-        foreach($this->reader as $reader){
+        foreach($this->readers as $reader){
             if($reader->has($key)){
                 return true;
             }
@@ -133,7 +134,7 @@ class Env
     public function all(): array
     {
         $result = [];
-        foreach(array_reverse($this->reader) as $reader){
+        foreach(array_reverse($this->readers) as $reader){
             $result = [...$result, ...$reader->all()];
         }
         
