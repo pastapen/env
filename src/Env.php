@@ -43,6 +43,10 @@ class Env
 
     protected function buildWriter(string $writer): void
     {
+        if(!class_exists($writer)){
+            throw new InvalidArgumentException("$writer class is not found !");
+        }
+        
         $writerInstance = new $writer();
         if(!$writerInstance instanceof WriterInterface){
             throw new InvalidArgumentException("$writer is an invalid writer instance !");
@@ -53,9 +57,17 @@ class Env
 
     protected function buildReaders(array $readers): void
     {
+        if(empty($readers)){
+            throw new InvalidArgumentException("Reader can't be empty. Please provide atleast one reader instance");
+        }
+
         foreach($readers as $reader){
             if(array_key_exists($reader, $this->readers)){
                 continue;
+            }
+
+            if(!class_exists($reader)){
+                throw new InvalidArgumentException("$reader class is not found !");
             }
 
             $readerInstance = new $reader();
