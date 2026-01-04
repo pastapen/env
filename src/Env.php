@@ -3,29 +3,64 @@
 namespace Pastapen\Env;
 
 use InvalidArgumentException;
+use Pastapen\Env\Contracts\ReaderInterface;
+use Pastapen\Env\Contracts\WriterInterface;
 use Pastapen\Env\Exceptions\ImmutableEnvironmentException;
 
 class Env
 {
-    protected array $values = [];
-
     protected bool $locked = false;
 
     protected bool $caseSensitive = false;
 
-    protected bool $useGetEnv = true;
+    protected array $reader = [];
 
-    protected bool $useEnvVar = true;
+    protected WriterInterface $writer;
+
+    protected function getDefaultWriter(): string
+    {
+        // Todo: set default writer
+        return '';
+    }
+
+    protected function getDefaultReader(): array
+    {
+        return [
+
+        ];
+    }
+
 
     public function __construct(
         bool $caseSensitive = false,
-        bool $useGetEnv = true,
-        bool $useEnvVar = true,
+        ?array $reader = null,
+        ?string $writer = null,
     )
     {
         $this->caseSensitive = $caseSensitive;
-        $this->useGetEnv = $useGetEnv;
-        $this->useEnvVar = $useEnvVar;
+
+        if(!$reader){
+            $reader = $this->getDefaultReader();
+        }
+        
+        foreach($reader as $readerClassName){
+            $readerInstance = new $readerClassName();
+
+            if(!$readerInstance instanceof ReaderInterface){
+                throw new InvalidArgumentException("$readerClassName is an invalid reader instance !");
+            }
+
+            $this->reader[] = $readerInstance;
+        }
+
+        if(!$writer){
+            $writer = $this->getDefaultWriter();
+        }
+        $writerInstance = new $writer();
+        if(!$writerInstance instanceof WriterInterface){
+            throw new InvalidArgumentException("$writer is an invalid writer instance !");
+        }
+        $this->writer = $writerInstance;
     }
 
     public function set(string $key, mixed $value): void
@@ -35,24 +70,20 @@ class Env
         }
 
         $key = $this->normalizeKey($key);
-        
-        $this->values[$key] = $value;
+        $this->writer->set($key, $value);
     }
 
     public function get(string $key, mixed $default = null): mixed
     {
         $key = $this->normalizeKey($key);
 
-        $values = $this->values[$key] ?? null;
-
-        if(!$values && $this->useEnvVar){
-            $values = $_ENV[$key] ?? null;
-        }
-        if(!$values && $this->useGetEnv){
-            $values = getenv($key, true);
+        foreach($this->reader as $reader){
+            if($reader->has($key)){
+                return $reader->get($key, $default);
+            }
         }
 
-        return $values ?? $default;
+        return $default;
     }
 
     protected function normalizeKey(string $key): string
@@ -74,21 +105,20 @@ class Env
     {
         $key = $this->normalizeKey($key);
 
-        $exists = array_key_exists($key, $this->values);
-        
-        if(!$exists && $this->useEnvVar){
-            $exists = array_key_exists($key, $_ENV);
-        }
-        if(!$exists && $this->useGetEnv){
-            $exists = getenv($key, true) !== false;
+        foreach($this->reader as $reader){
+            if($reader->has($key)){
+                return true;
+            }
         }
 
-        return $exists;
+        return false;
     }
 
     public function lock(): void
     {
-        $this->locked = true;
+        if($this->writer->supportsLock()){
+            $this->locked = true;
+        }
     }
 
     public function unlock(): void
@@ -98,6 +128,11 @@ class Env
 
     public function all(): array
     {
-        return $this->values;
+        $result = [];
+        foreach(array_reverse($this->reader) as $reader){
+            $result = [...$result, ...$reader->all()];
+        }
+        
+        return $result;
     }
 }
