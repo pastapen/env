@@ -19,14 +19,13 @@ class Env
 
     protected function getDefaultWriter(): string
     {
-        // Todo: set default writer
-        return '';
+        return \Pastapen\Env\Stores\VariableStore::class;
     }
 
     protected function getDefaultReader(): array
     {
         return [
-
+            \Pastapen\Env\Stores\VariableStore::class
         ];
     }
 
@@ -42,16 +41,6 @@ class Env
         if(!$reader){
             $reader = $this->getDefaultReader();
         }
-        
-        foreach($reader as $readerClassName){
-            $readerInstance = new $readerClassName();
-
-            if(!$readerInstance instanceof ReaderInterface){
-                throw new InvalidArgumentException("$readerClassName is an invalid reader instance !");
-            }
-
-            $this->reader[] = $readerInstance;
-        }
 
         if(!$writer){
             $writer = $this->getDefaultWriter();
@@ -61,6 +50,21 @@ class Env
             throw new InvalidArgumentException("$writer is an invalid writer instance !");
         }
         $this->writer = $writerInstance;
+        $this->reader[$writer] = $writerInstance;
+        
+        foreach($reader as $readerClassName){
+            if(array_key_exists($readerClassName, $this->reader)){
+                continue;
+            }
+
+            $readerInstance = new $readerClassName();
+
+            if(!$readerInstance instanceof ReaderInterface){
+                throw new InvalidArgumentException("$readerClassName is an invalid reader instance !");
+            }
+
+            $this->reader[$readerClassName] = $readerInstance;
+        }
     }
 
     public function set(string $key, mixed $value): void
